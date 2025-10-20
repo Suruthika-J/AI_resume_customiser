@@ -1,0 +1,875 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI powered Resume customizer</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: #333;
+            padding: 20px;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 1100px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 50px 40px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            font-weight: 700;
+        }
+
+        .header p {
+            font-size: 1.1em;
+            opacity: 0.95;
+            font-weight: 300;
+        }
+
+        .content {
+            padding: 40px;
+        }
+
+        .upload-section {
+            background: #f8f9fa;
+            padding: 30px;
+            border-radius: 8px;
+            margin-bottom: 30px;
+        }
+
+        .form-group {
+            margin-bottom: 25px;
+        }
+
+        .form-group:last-child {
+            margin-bottom: 0;
+        }
+
+        label {
+            display: block;
+            font-weight: 600;
+            margin-bottom: 10px;
+            color: #333;
+            font-size: 14px;
+        }
+
+        input[type="file"] {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #ddd;
+            border-radius: 6px;
+            font-size: 14px;
+            transition: all 0.3s;
+            background: white;
+        }
+
+        input[type="file"]:hover {
+            border-color: #667eea;
+            background: #f9f9f9;
+        }
+
+        .upload-btn {
+            width: 100%;
+            padding: 14px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            margin-top: 20px;
+        }
+
+        .upload-btn:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(102, 126, 234, 0.4);
+        }
+
+        .upload-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        .loader {
+            border: 5px solid #f3f3f3;
+            border-top: 5px solid #667eea;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            animation: spin 1s linear infinite;
+            margin: 30px auto;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        #main-content {
+            display: block;
+        }
+
+        #results-section {
+            display: none;
+        }
+
+        .tabs {
+            display: flex;
+            border-bottom: 2px solid #e9ecef;
+            margin-bottom: 30px;
+            gap: 0;
+            overflow-x: auto;
+        }
+
+        .tab-btn {
+            padding: 15px 25px;
+            background: none;
+            border: none;
+            font-size: 15px;
+            font-weight: 500;
+            color: #888;
+            cursor: pointer;
+            border-bottom: 3px solid transparent;
+            transition: all 0.3s;
+            white-space: nowrap;
+        }
+
+        .tab-btn:hover {
+            color: #667eea;
+            background: #f8f9fa;
+        }
+
+        .tab-btn.active {
+            color: #667eea;
+            border-bottom-color: #667eea;
+            background: #f8f9fa;
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+            animation: fadeIn 0.4s;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* MATCH TAB */
+        .score-section {
+            margin-bottom: 40px;
+        }
+
+        .score-section h2 {
+            font-size: 1.5em;
+            color: #333;
+            margin-bottom: 25px;
+            font-weight: 600;
+        }
+
+        .score-grid {
+            display: grid;
+            grid-template-columns: 1fr 1.2fr;
+            gap: 40px;
+            align-items: start;
+            margin-bottom: 30px;
+        }
+
+        .chart-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .chart-wrapper {
+            width: 300px;
+            height: 300px;
+        }
+
+        .scores-list {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            justify-content: flex-start;
+        }
+
+        .score-item {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .score-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .score-label {
+            font-weight: 600;
+            color: #333;
+            font-size: 14px;
+        }
+
+        .score-percentage {
+            font-weight: 700;
+            color: #667eea;
+            font-size: 16px;
+        }
+
+        .score-bar {
+            height: 32px;
+            background: #f0f0f0;
+            border-radius: 16px;
+            overflow: hidden;
+            box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .score-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            padding-right: 12px;
+            color: white;
+            font-weight: 600;
+            font-size: 12px;
+            transition: width 1s ease;
+            border-radius: 16px;
+            min-width: 40px;
+        }
+
+        .summary {
+            background: linear-gradient(135deg, #f0f4ff 0%, #f8f9ff 100%);
+            padding: 25px;
+            border-radius: 8px;
+            border-left: 4px solid #667eea;
+            color: #555;
+            line-height: 1.7;
+            font-size: 15px;
+        }
+
+        /* RESUME TAB */
+        .resume-content {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        textarea {
+            width: 100%;
+            height: 450px;
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 13px;
+            line-height: 1.6;
+            resize: vertical;
+            color: #333;
+            transition: border-color 0.3s;
+        }
+
+        textarea:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .action-btns {
+            display: flex;
+            gap: 12px;
+        }
+
+        .action-btns button {
+            flex: 1;
+            padding: 12px 20px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 14px;
+            transition: all 0.3s;
+        }
+
+        .action-btns button:hover {
+            background: #764ba2;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.3);
+        }
+
+        /* INTERVIEW & CHAT TABS */
+        .feature-btn {
+            background: #28a745;
+            padding: 12px 24px;
+            margin-bottom: 20px;
+            width: auto;
+        }
+
+        .feature-btn:hover {
+            background: #218838;
+        }
+
+        .result-content {
+            background: #f8f9fa;
+            padding: 25px;
+            border-radius: 6px;
+            border: 1px solid #ddd;
+            line-height: 1.8;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            max-height: 550px;
+            overflow-y: auto;
+            color: #333;
+            font-size: 14px;
+        }
+
+        /* CHAT TAB */
+        .chat-container {
+            display: flex;
+            flex-direction: column;
+            height: 600px;
+            gap: 15px;
+        }
+
+        #chat-window {
+            flex: 1;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 20px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            background: #f8f9fa;
+        }
+
+        .message {
+            padding: 12px 16px;
+            border-radius: 10px;
+            max-width: 85%;
+            line-height: 1.5;
+            word-wrap: break-word;
+            font-size: 14px;
+        }
+
+        .message.user {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            align-self: flex-end;
+            border-bottom-right-radius: 2px;
+        }
+
+        .message.bot {
+            background: white;
+            color: #333;
+            align-self: flex-start;
+            border-bottom-left-radius: 2px;
+            border: 1px solid #ddd;
+        }
+
+        .chat-input-box {
+            display: flex;
+            gap: 10px;
+        }
+
+        #chat-input {
+            flex: 1;
+            padding: 12px 16px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-size: 14px;
+            font-family: inherit;
+            transition: all 0.3s;
+        }
+
+        #chat-input:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        #chat-input:disabled {
+            background-color: #f0f0f0;
+            color: #999;
+            cursor: not-allowed;
+        }
+
+        #chat-send {
+            padding: 12px 24px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 14px;
+            transition: all 0.3s;
+            white-space: nowrap;
+        }
+
+        #chat-send:hover:not(:disabled) {
+            background: #764ba2;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.3);
+        }
+
+        #chat-send:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        /* RESPONSIVE */
+        @media (max-width: 900px) {
+            .score-grid {
+                grid-template-columns: 1fr;
+                gap: 30px;
+            }
+
+            .header {
+                padding: 30px 20px;
+            }
+
+            .header h1 {
+                font-size: 2em;
+            }
+
+            .content {
+                padding: 25px;
+            }
+
+            .tabs {
+                flex-wrap: wrap;
+            }
+
+            .tab-btn {
+                padding: 12px 16px;
+                font-size: 14px;
+            }
+
+            textarea {
+                height: 350px;
+            }
+
+            .message {
+                max-width: 95%;
+            }
+
+            .action-btns {
+                flex-direction: column;
+            }
+
+            .action-btns button {
+                width: 100%;
+            }
+        }
+
+        @media (max-width: 600px) {
+            body {
+                padding: 10px;
+            }
+
+            .container {
+                border-radius: 8px;
+            }
+
+            .header {
+                padding: 25px 15px;
+            }
+
+            .header h1 {
+                font-size: 1.6em;
+            }
+
+            .content {
+                padding: 15px;
+            }
+
+            .upload-section {
+                padding: 20px;
+            }
+
+            .score-grid {
+                gap: 20px;
+            }
+
+            .chart-wrapper {
+                width: 250px;
+                height: 250px;
+            }
+
+            .scores-list {
+                gap: 15px;
+            }
+
+            textarea {
+                height: 300px;
+                font-size: 12px;
+                padding: 12px;
+            }
+
+            .result-content {
+                padding: 15px;
+                font-size: 13px;
+            }
+
+            #chat-window {
+                height: 400px;
+                padding: 12px;
+            }
+
+            .message {
+                padding: 10px 12px;
+                font-size: 13px;
+            }
+
+            .tab-btn {
+                padding: 10px 12px;
+                font-size: 13px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>AI powered Resume customizer</h1>
+            <p>Match your resume to job descriptions and get interview ready</p>
+        </div>
+
+        <div class="content">
+            <div id="main-content">
+                <div class="upload-section">
+                    <div class="form-group">
+                        <label>Upload Your Resume</label>
+                        <input type="file" id="resume-file" accept=".pdf,.docx" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Upload Job Description</label>
+                        <input type="file" id="jd-file" accept=".pdf,.docx,.txt" required>
+                    </div>
+                    <button class="upload-btn" id="analyze-btn">Analyze & Generate</button>
+                    <div id="loader" class="loader" style="display: none;"></div>
+                </div>
+            </div>
+
+            <div id="results-section">
+                <div class="tabs">
+                    <button class="tab-btn active" data-tab="match">Resume & Job Match</button>
+                    <button class="tab-btn" data-tab="resume">Tailored Resume</button>
+                    <button class="tab-btn" data-tab="interview">Interview Prep</button>
+                    <button class="tab-btn" data-tab="chat">Ask Chatbot</button>
+                </div>
+
+                <!-- TAB 1: MATCH -->
+                <div id="match" class="tab-content active">
+                    <div class="score-section">
+                        <h2>Resume & Job Match Analysis</h2>
+                        <div class="score-grid">
+                            <div class="chart-container">
+                                <div class="chart-wrapper">
+                                    <canvas id="scoreChart"></canvas>
+                                </div>
+                            </div>
+                            <div class="scores-list">
+                                <div class="score-item">
+                                    <div class="score-header">
+                                        <span class="score-label">Skills Match</span>
+                                        <span class="score-percentage">0%</span>
+                                    </div>
+                                    <div class="score-bar">
+                                        <div class="score-fill" style="width: 0%"></div>
+                                    </div>
+                                </div>
+                                <div class="score-item">
+                                    <div class="score-header">
+                                        <span class="score-label">Experience Match</span>
+                                        <span class="score-percentage">0%</span>
+                                    </div>
+                                    <div class="score-bar">
+                                        <div class="score-fill" style="width: 0%"></div>
+                                    </div>
+                                </div>
+                                <div class="score-item">
+                                    <div class="score-header">
+                                        <span class="score-label">Keywords Match</span>
+                                        <span class="score-percentage">0%</span>
+                                    </div>
+                                    <div class="score-bar">
+                                        <div class="score-fill" style="width: 0%"></div>
+                                    </div>
+                                </div>
+                                <div class="score-item">
+                                    <div class="score-header">
+                                        <span class="score-label">Tone Match</span>
+                                        <span class="score-percentage">0%</span>
+                                    </div>
+                                    <div class="score-bar">
+                                        <div class="score-fill" style="width: 0%"></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="summary" id="summary">Upload your files to see detailed match analysis</div>
+                    </div>
+                </div>
+
+                <!-- TAB 2: RESUME -->
+                <div id="resume" class="tab-content">
+                    <h2>Your Tailored Resume</h2>
+                    <div class="resume-content">
+                        <textarea id="resume-output" readonly></textarea>
+                        <div class="action-btns">
+                            <button onclick="copyResume()">Copy Resume</button>
+                            <button onclick="downloadResume()">Download as .txt</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- TAB 3: INTERVIEW -->
+                <div id="interview" class="tab-content">
+                    <h2>Interview Question Preparation</h2>
+                    <button class="feature-btn" onclick="generateInterview()">Generate Interview Questions</button>
+                    <div id="interview-result" class="result-content" style="display: none;"></div>
+                </div>
+
+                <!-- TAB 4: CHAT -->
+                <div id="chat" class="tab-content">
+                    <h2>Ask AI Chatbot</h2>
+                    <div class="chat-container">
+                        <div id="chat-window">
+                            <div class="message bot">Hi! I'm your resume coach. Ask me anything about improving your resume for this job.</div>
+                        </div>
+                        <div class="chat-input-box">
+                            <input type="text" id="chat-input" placeholder="e.g., How can I make my skills section stronger?" disabled>
+                            <button id="chat-send" disabled>Send</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let resumeText = '';
+        let jdText = '';
+        let tailoredResume = '';
+        let chatHistory = [];
+        let scoreChart = null;
+
+        document.getElementById('analyze-btn').onclick = async function() {
+            const resumeFile = document.getElementById('resume-file').files[0];
+            const jdFile = document.getElementById('jd-file').files[0];
+
+            if (!resumeFile || !jdFile) {
+                alert('Please upload both files');
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('resume', resumeFile);
+            formData.append('job_description', jdFile);
+
+            document.getElementById('loader').style.display = 'block';
+            document.getElementById('analyze-btn').disabled = true;
+
+            try {
+                const res = await fetch('/customize', { method: 'POST', body: formData });
+                const data = await res.json();
+
+                if (res.ok) {
+                    resumeText = data.resume_text;
+                    jdText = data.jd_text;
+                    tailoredResume = data.customized_resume;
+
+                    document.getElementById('main-content').style.display = 'none';
+                    document.getElementById('results-section').style.display = 'block';
+
+                    updateScores(data.overall_score, data.skills_match, 
+                                data.experience_match, data.keywords_match, 
+                                data.match_summary);
+
+                    document.getElementById('resume-output').value = tailoredResume;
+                    document.getElementById('chat-input').disabled = false;
+                    document.getElementById('chat-send').disabled = false;
+
+                    chatHistory = [];
+                } else {
+                    alert('Error: ' + data.error);
+                }
+            } catch (e) {
+                alert('Error: ' + e.message);
+            } finally {
+                document.getElementById('loader').style.display = 'none';
+                document.getElementById('analyze-btn').disabled = false;
+            }
+        };
+
+        function updateScores(overall, skills, exp, keywords, summary) {
+            const percentages = document.querySelectorAll('.score-percentage');
+            const fills = document.querySelectorAll('.score-fill');
+
+            percentages[0].textContent = skills + '%';
+            percentages[1].textContent = exp + '%';
+            percentages[2].textContent = keywords + '%';
+            percentages[3].textContent = overall + '%';
+
+            fills[0].style.width = skills + '%';
+            fills[1].style.width = exp + '%';
+            fills[2].style.width = keywords + '%';
+            fills[3].style.width = overall + '%';
+
+            updateChart(skills, exp, keywords, overall);
+            document.getElementById('summary').innerHTML = '<strong>Match Summary:</strong> ' + summary;
+        }
+
+        function updateChart(skills, exp, keywords, overall) {
+            const ctx = document.getElementById('scoreChart');
+            if (scoreChart) scoreChart.destroy();
+
+            scoreChart = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Skills', 'Experience', 'Keywords'],
+                    datasets: [{
+                        data: [skills, exp, keywords],
+                        backgroundColor: ['#667eea', '#764ba2', '#f093fb'],
+                        borderColor: 'white',
+                        borderWidth: 2
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    plugins: {
+                        legend: { position: 'bottom', padding: 15 },
+                        tooltip: { callbacks: { label: (ctx) => ctx.label + ': ' + ctx.parsed + '%' } }
+                    }
+                }
+            });
+        }
+
+        document.querySelectorAll('.tab-btn').forEach(btn => {
+            btn.onclick = function() {
+                document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+                document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+                this.classList.add('active');
+                document.getElementById(this.dataset.tab).classList.add('active');
+            };
+        });
+
+        async function generateInterview() {
+            const resultDiv = document.getElementById('interview-result');
+            resultDiv.style.display = 'block';
+            resultDiv.innerHTML = 'Loading...';
+
+            try {
+                const res = await fetch('/prepare-interview', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ resume_text: tailoredResume, jd_text: jdText })
+                });
+                const data = await res.json();
+                resultDiv.innerHTML = data.questions;
+            } catch (e) {
+                resultDiv.innerHTML = 'Error: ' + e.message;
+            }
+        }
+
+        function copyResume() {
+            document.getElementById('resume-output').select();
+            document.execCommand('copy');
+            alert('Copied to clipboard!');
+        }
+
+        function downloadResume() {
+            const blob = new Blob([tailoredResume], { type: 'text/plain' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'tailored_resume.txt';
+            a.click();
+        }
+
+        document.getElementById('chat-send').onclick = async function() {
+            const msg = document.getElementById('chat-input').value.trim();
+            if (!msg) return;
+
+            const chatWin = document.getElementById('chat-window');
+            
+            const userMsg = document.createElement('div');
+            userMsg.className = 'message user';
+            userMsg.textContent = msg;
+            chatWin.appendChild(userMsg);
+
+            chatHistory.push({ role: 'user', content: msg });
+            document.getElementById('chat-input').value = '';
+            document.getElementById('chat-send').disabled = true;
+
+            try {
+                const res = await fetch('/chat', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        resume_text: tailoredResume,
+                        history: chatHistory,
+                        message: msg
+                    })
+                });
+                const data = await res.json();
+
+                const botMsg = document.createElement('div');
+                botMsg.className = 'message bot';
+                botMsg.textContent = data.reply;
+                chatWin.appendChild(botMsg);
+
+                chatHistory.push({ role: 'assistant', content: data.reply });
+                chatWin.scrollTop = chatWin.scrollHeight;
+            } catch (e) {
+                const errMsg = document.createElement('div');
+                errMsg.className = 'message bot';
+                errMsg.textContent = 'Error: ' + e.message;
+                chatWin.appendChild(errMsg);
+            } finally {
+                document.getElementById('chat-send').disabled = false;
+                document.getElementById('chat-input').focus();
+            }
+        };
+
+        document.getElementById('chat-input').onkeypress = function(e) {
+            if (e.key === 'Enter') document.getElementById('chat-send').click();
+        };
+    </script>
+</body>
+</html>
